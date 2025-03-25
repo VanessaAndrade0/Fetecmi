@@ -3,136 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finanzas Tecmi</title>
+    <title>Finanzas FE Tecmi</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f9;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 20px;
-        }
-
-        h1 {
-            color: #4CAF50;
-            margin-bottom: 20px;
-        }
-
-        .inputs {
-            margin-bottom: 20px;
-        }
-
-        input {
-            margin: 5px;
-            padding: 8px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        .resultados {
-            margin-bottom: 20px;
-            background-color: #fff;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
-            text-align: center;
-        }
+        body { font-family: Arial, sans-serif; margin: 20px; padding: 20px; background-color: #f4f4f9; }
+        input, button, select { margin: 5px; padding: 8px; }
+        table { margin-top: 20px; border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+        canvas { margin-top: 20px; max-width: 100%; }
+        #reset { background-color: red; color: white; padding: 5px 10px; margin-top: 15px; cursor: pointer; }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Librería para gráficas -->
 </head>
 <body>
-    <h1>Finanzas Tecmi</h1>
-    <div class="inputs">
-        <input type="number" id="inversion" placeholder="Dinero Invertido">
-        <input type="number" id="gasto" placeholder="Gasto">
-        <input type="number" id="ganancia" placeholder="Ganancia">
-        <button onclick="agregarDatos()">Agregar</button>
-    </div>
-    <div class="resultados">
-        <p>Total Invertido: <span id="totalInversion">0</span></p>
-        <p>Total Gastado: <span id="totalGasto">0</span></p>
-        <p>Total Ganado: <span id="totalGanancia">0</span></p>
-        <p>Porcentaje de Ganancia: <span id="porcentajeGanancia">0%</span></p>
-    </div>
+    <h2>Finanzas FE Tecmi</h2>
+    <input id="concepto" type="text" placeholder="Concepto">
+    <input id="cantidad" type="number" placeholder="Cantidad">
+    <select id="tipo">
+        <option value="ganancia">Ganancia</option>
+        <option value="inversion">Inversión</option>
+        <option value="gasto">Gasto</option>
+    </select>
+    <button id="agregar">Agregar</button>
+
+    <br>
+    <input id="fechaFiltro" type="date">
+    <button id="filtrar">Filtrar por fecha</button>
+    <button id="borrar">Borrar Datos</button>
+
+    <h3>Transacciones</h3>
+    <table>
+        <thead>
+            <tr><th>Fecha</th><th>Concepto</th><th>Cantidad</th><th>Tipo</th></tr>
+        </thead>
+        <tbody id="tabla-transacciones"></tbody>
+    </table>
+
+    <h3>Resumen Financiero</h3>
+    <p id="resumen"></p>
     <canvas id="grafica" width="400" height="200"></canvas>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        let totalInversion = 0;
-        let totalGasto = 0;
-        let totalGanancia = 0;
+        let transacciones = JSON.parse(localStorage.getItem("transacciones")) || [];
 
-        const inversionInput = document.getElementById("inversion");
-        const gastoInput = document.getElementById("gasto");
-        const gananciaInput = document.getElementById("ganancia");
+        document.querySelector("#agregar").addEventListener("click", agregarTransaccion);
+        document.querySelector("#agregar").addEventListener("touchstart", agregarTransaccion);
+        document.querySelector("#filtrar").addEventListener("click", filtrarPorFecha);
+        document.querySelector("#filtrar").addEventListener("touchstart", filtrarPorFecha);
+        document.querySelector("#borrar").addEventListener("click", borrarDatos);
+        document.querySelector("#borrar").addEventListener("touchstart", borrarDatos);
 
-        const totalInversionText = document.getElementById("totalInversion");
-        const totalGastoText = document.getElementById("totalGasto");
-        const totalGananciaText = document.getElementById("totalGanancia");
-        const porcentajeGananciaText = document.getElementById("porcentajeGanancia");
+        function agregarTransaccion() {
+            const concepto = document.querySelector("#concepto").value;
+            const cantidad = parseFloat(document.querySelector("#cantidad").value);
+            const tipo = document.querySelector("#tipo").value;
+            const fecha = new Date().toISOString().split("T")[0];
 
-        const ctx = document.getElementById("grafica").getContext("2d");
-        const grafica = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Inversión', 'Gasto', 'Ganancia'],
-                datasets: [{
-                    label: 'Finanzas Tecmi',
-                    data: [0, 0, 0],
-                    backgroundColor: ['#FF6384', '#36A2EB', '#4CAF50']
-                }]
-            },
-            options: {
-                responsive: true
+            if (concepto && !isNaN(cantidad)) {
+                transacciones.push({ fecha, concepto, cantidad, tipo });
+                localStorage.setItem("transacciones", JSON.stringify(transacciones));
+                mostrarTransacciones();
+                mostrarResumen();
             }
-        });
-
-        function agregarDatos() {
-            let inversion = parseFloat(inversionInput.value) || 0;
-            let gasto = parseFloat(gastoInput.value) || 0;
-            let ganancia = parseFloat(gananciaInput.value) || 0;
-
-            totalInversion += inversion;
-            totalGasto += gasto;
-            totalGanancia += ganancia;
-
-            totalInversionText.innerText = totalInversion;
-            totalGastoText.innerText = totalGasto;
-            totalGananciaText.innerText = totalGanancia;
-
-            let porcentajeGanancia = totalGanancia === 0 ? 0 : ((totalGanancia - totalInversion - totalGasto) / totalInversion) * 100;
-            porcentajeGananciaText.innerText = porcentajeGanancia.toFixed(2) + "%";
-
-            actualizarGrafica();
-            limpiarInputs();
         }
 
-        function actualizarGrafica() {
-            grafica.data.datasets[0].data = [totalInversion, totalGasto, totalGanancia];
-            grafica.update();
+        function mostrarTransacciones(filtroFecha = "") {
+            const tbody = document.querySelector("#tabla-transacciones");
+            tbody.innerHTML = "";
+            transacciones
+                .filter(t => !filtroFecha || t.fecha === filtroFecha)
+                .forEach(t => {
+                    tbody.innerHTML += `<tr><td>${t.fecha}</td><td>${t.concepto}</td><td>${t.cantidad}</td><td>${t.tipo}</td></tr>`;
+                });
         }
 
-        function limpiarInputs() {
-            inversionInput.value = '';
-            gastoInput.value = '';
-            gananciaInput.value = '';
+        function mostrarResumen() {
+            const resumen = document.querySelector("#resumen");
+            const totalGanado = transacciones.filter(t => t.tipo === "ganancia").reduce((sum, t) => sum + t.cantidad, 0);
+            const totalInvertido = transacciones.filter(t => t.tipo === "inversion").reduce((sum, t) => sum + t.cantidad, 0);
+            const totalGastado = transacciones.filter(t => t.tipo === "gasto").reduce((sum, t) => sum + t.cantidad, 0);
+
+            resumen.innerText = `Ganado: $${totalGanado}, Invertido: $${totalInvertido}, Gastado: $${totalGastado}`;
+
+            new Chart(document.getElementById("grafica"), {
+                type: "pie",
+                data: {
+                    labels: ["Ganancias", "Inversiones", "Gastos"],
+                    datasets: [{
+                        data: [totalGanado, totalInvertido, totalGastado],
+                        backgroundColor: ["#4caf50", "#2196f3", "#f44336"]
+                    }]
+                }
+            });
         }
+
+        function filtrarPorFecha() {
+            const fechaFiltro = document.querySelector("#fechaFiltro").value;
+            mostrarTransacciones(fechaFiltro);
+        }
+
+        function borrarDatos() {
+            transacciones = [];
+            localStorage.removeItem("transacciones");
+            mostrarTransacciones();
+            mostrarResumen();
+        }
+
+        mostrarTransacciones();
+        mostrarResumen();
     </script>
 </body>
 </html>
